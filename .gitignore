@@ -1,9 +1,23 @@
+# .NET build artifacts
 bin/
 obj/
 *.user
+*.suo
 .vs/
-.vscode/
+ 
+# Local developer secrets — never commit these
 appsettings.Development.json
-appsettings.*.local.json
-.env
+appsettings.*.json
+!appsettings.json
+ 
+# NuGet
+*.nupkg
+.nuget/
+ 
+# Logs
+logs/
+*.log
+ 
+# OS files
 .DS_Store
+Thumbs.db
