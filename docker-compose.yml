@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chatapp
+      POSTGRES_USER: chatapp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - chatapp_pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI: http://localhost:15672 (guest/guest)
+
+  chatapp-web:
+    build:
+      context: .
+      dockerfile: src/ChatApp.Web/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=chatapp;Username=chatapp;Password=${POSTGRES_PASSWORD:-changeme}"
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__UserName: guest
+      RabbitMq__Password: guest
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  chatapp-bot:
+    build:
+      context: .
+      dockerfile: src/ChatApp.Bot/Dockerfile
+    environment:
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__UserName: guest
+      RabbitMq__Password: guest
+    depends_on:
+      - rabbitmq
+    # Demonstrate horizontal scaling of the decoupled bot, e.g.:
+    #   docker compose up --scale chatapp-bot=3
+
+volumes:
+  chatapp_pgdata:

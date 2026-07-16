@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatApp</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <form id="login" onsubmit="return false;">
+    <h1>ChatApp</h1>
+    <p class="subtitle">Sign in to join the chatroom.</p>
+
+    <label for="username">Username</label>
+    <input id="username" autocomplete="username" placeholder="jane.doe" />
+    <p class="field-hint" id="usernameHint">3-20 characters. Start with a letter; letters, numbers, dots, underscores, or hyphens after that.</p>
+
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); login(); }" />
+    <p class="field-hint" id="passwordHint">At least 8 characters, including a letter and a number.</p>
+    <p class="field-hint" style="margin-top:-8px;">New here? Fill in both fields above, then tap <strong>Register</strong> - it also signs you in.</p>
+
+    <div class="login-actions">
+      <button type="submit" class="btn-primary" onclick="login()">Sign in</button>
+      <button type="submit" class="btn-secondary" onclick="register()">Register</button>
+    </div>
+    <p id="loginError" role="alert"></p>
+  </form>
+
+  <div id="chat">
+    <div id="chat-header">
+      <div>
+        <h1>General chatroom</h1>
+        <div class="status">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">connecting…</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="whoami" style="font-size:13px;color:var(--text-secondary);"></span>
+        <button id="soundToggle" class="icon-btn" type="button" aria-pressed="true" title="Mute notification sound" onclick="toggleSound()">🔔</button>
+      </div>
+    </div>
+
+    <div id="rateLimitBanner" class="banner" hidden></div>
+    <div class="tip-banner">Tip: send <code>/stock=aapl.us</code> to get a live quote from StockBot. Stock commands aren't saved as posts - only the reply is.</div>
+
+    <ul id="messages" aria-live="polite"></ul>
+
+    <div id="composer">
+      <input id="messageInput" placeholder="Message, or /stock=aapl.us" autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button id="sendBtn" type="button" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.0/dist/browser/signalr.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
