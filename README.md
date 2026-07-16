@@ -262,3 +262,14 @@ return a specific 400 error describing which rule failed.
   that query cheap regardless of table size.
 - RabbitMQ prefetch is set to 5 on both the bot's request consumer and the web app's
   response consumer, so load spreads reasonably evenly if you scale to multiple bot instances.
+- **Poison messages / dead-lettering**: if a message on `stock.requests` or
+  `stock.responses` fails to deserialize (corrupted or incompatible JSON), it's nacked
+  without requeueing and routed to a dead-letter queue (`stock.requests.dlq` /
+  `stock.responses.dlq`, bound to the `chatapp.dlx` exchange - see
+  `RabbitMqTopology.cs`) instead of being requeued. Requeueing was the original
+  behavior and was a bug: a deserialization failure is deterministic, so the same bytes
+  would fail identically forever, spinning a consumer in a tight loop. Since all three
+  places that declare these queues (`StockQuoteWorker`, `RabbitMqStockRequestPublisher`,
+  `StockResponseListener`) must declare them with identical arguments - RabbitMQ
+  rejects a redeclare that disagrees with the original - the declaration lives in one
+  shared helper, the same reasoning as `QueueNames.cs` itself.

@@ -10,7 +10,7 @@ public sealed class RabbitMqStockRequestPublisher(RabbitMqConnectionProvider con
     public Task PublishAsync(StockRequested request, CancellationToken cancellationToken = default)
     {
         using var channel = connectionProvider.Connection.CreateModel();
-        channel.QueueDeclare(QueueNames.StockRequests, durable: true, exclusive: false, autoDelete: false);
+        RabbitMqTopology.DeclareStockQueues(channel);
 
         var body = JsonSerializer.SerializeToUtf8Bytes(request);
         var properties = channel.CreateBasicProperties();

@@ -23,7 +23,7 @@ public sealed class StockResponseListener(
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var channel = connectionProvider.Connection.CreateModel();
-        channel.QueueDeclare(QueueNames.StockResponses, durable: true, exclusive: false, autoDelete: false);
+        RabbitMqTopology.DeclareStockQueues(channel);
         channel.BasicQos(prefetchSize: 0, prefetchCount: 5, global: false);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
@@ -41,8 +41,11 @@ public sealed class StockResponseListener(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to process stock response, requeuing");
-                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: true);
+                // See StockQuoteWorker's identical catch block: a deserialization
+                // failure is deterministic, so requeuing would loop forever. Dead-
+                // lettering (see RabbitMqTopology) preserves the message instead.
+                logger.LogError(ex, "Failed to process stock response, dead-lettering");
+                channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
             }
         };
 

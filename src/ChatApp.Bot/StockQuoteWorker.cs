@@ -30,8 +30,7 @@ public sealed class StockQuoteWorker(
         _connection = factory.CreateConnection("chatapp-bot");
         _channel = _connection.CreateModel();
 
-        _channel.QueueDeclare(QueueNames.StockRequests, durable: true, exclusive: false, autoDelete: false);
-        _channel.QueueDeclare(QueueNames.StockResponses, durable: true, exclusive: false, autoDelete: false);
+        RabbitMqTopology.DeclareStockQueues(_channel);
 
         // Small prefetch so multiple bot instances share load roughly evenly (competing consumers).
         _channel.BasicQos(prefetchSize: 0, prefetchCount: 5, global: false);
@@ -51,8 +50,12 @@ public sealed class StockQuoteWorker(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to process stock request, requeuing");
-                _channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: true);
+                // Requeuing here would loop forever - a deserialization failure is
+                // deterministic, so the same bytes fail identically on every retry.
+                // Dead-lettering (see RabbitMqTopology) preserves the message for
+                // inspection instead of retrying pointlessly or dropping it silently.
+                logger.LogError(ex, "Failed to process stock request, dead-lettering");
+                _channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
             }
         };
 
