@@ -11,7 +11,7 @@ src/
   ChatApp.Web/          ASP.NET Core: SignalR hub, auth endpoints, EF Core, static frontend
   ChatApp.Bot/          Worker service: consumes stock.requests, calls Yahoo Finance, publishes stock.responses
 tests/
-  ChatApp.Tests/        xUnit tests for the command parser and the quote parser
+  ChatApp.Tests/        xUnit tests for the command parser, the quote parser, and the validators
 docker-compose.yml       Postgres + RabbitMQ + both apps
 ```
 
@@ -164,8 +164,11 @@ dotnet run
 
 Then open `http://localhost:5000` (or whatever port `dotnet run` prints) in two
 different browser windows/profiles, register two different users, and:
-- send plain messages back and forth
+- send plain messages back and forth (join the same room - e.g. leave "Room" as
+  `general` in both windows)
 - send `/stock=aapl.us` from one window and watch StockBot's reply land in both
+- open a third window in a different room (e.g. `random`) and confirm none of the
+  `general` room's messages or stock replies show up there
 - optionally Ctrl+C the bot terminal mid-demo to show the chat keeps working without it
 
 ## Running everything in Docker instead
@@ -225,6 +228,17 @@ return a specific 400 error describing which rule failed.
 
 ## Notes
 
+- **Multiple chatrooms**: users pick a room name at login (defaults to `general`,
+  validated by `RoomNameValidator.cs` - 1-30 characters, letters/numbers/`.`/`_`/`-`).
+  `ChatHub` reads the room from the `?room=` query string on the SignalR connection,
+  joins a group named after it, and scopes both message history and live broadcasts
+  (`Clients.Group(roomName)`) to that group. `ChatMessage.RoomName` is persisted and
+  indexed alongside `TimestampUtc` so "last 50" stays scoped per room. `/stock=` replies
+  round-trip the room through `StockRequested`/`StockQuoteReady` (Bot doesn't otherwise
+  care about rooms - it just carries the value through) so StockBot's answer lands back
+  in the room that asked. Rooms are created implicitly - there's no separate `Rooms`
+  table, no room list/directory, and no access control (anyone who knows/guesses a name
+  can join it), which is the main simplification versus a "real" multi-room design.
 - **Stock quote provider**: `ChatApp.Bot` originally called the Stooq CSV endpoint
   (`stooq.com/q/l/...`), but Stooq has since put its endpoints behind a JavaScript
   proof-of-work challenge (a script that must run in a real browser and POST a solved

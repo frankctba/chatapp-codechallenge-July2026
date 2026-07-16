@@ -195,6 +195,50 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   border-bottom: 1px solid var(--border);
 }
 
+.room-switcher {
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.room-switcher label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.room-switcher-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.room-switcher-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.room-switcher-row button {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.room-switcher-row button.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  font-weight: 600;
+}
+#switchRoomError {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 6px 0 0;
+  min-height: 14px;
+}
+
 
 #messages {
   list-style: none;

@@ -5,3 +5,4 @@ public sealed record ChatMessageDto(Guid Id, string Username, string Content, Da
     public static ChatMessageDto FromEntity(ChatMessage entity) =>
         new(entity.Id, entity.Username, entity.Content, entity.TimestampUtc, entity.UserId == User.StockBotId);
 }
+

@@ -3,6 +3,7 @@ using ChatApp.Contracts;
 using ChatApp.Web.Data;
 using ChatApp.Web.Models;
 using ChatApp.Web.Services;
+using ChatApp.Web.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,12 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
     private const int MaxMessagesPerWindow = 10;
     private static readonly TimeSpan Window = TimeSpan.FromSeconds(10);
 
+    // Tracks which room each connection joined. Same "needs a shared store if scaled
+    // out" caveat as RateLimitState above - SignalR groups themselves work fine across
+    // a backplane, but this dictionary (used to know which room a given SendMessage
+    // call belongs to) does not.
+    private static readonly ConcurrentDictionary<string, string> ConnectionRooms = new();
+
     private bool IsRateLimited()
     {
         var connectionId = Context.ConnectionId;
@@ -41,19 +48,29 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
         RateLimitState.TryRemove(Context.ConnectionId, out _);
+        ConnectionRooms.TryRemove(Context.ConnectionId, out _);
         return base.OnDisconnectedAsync(exception);
     }
 
     public override async Task OnConnectedAsync()
     {
+        var requestedRoom = Context.GetHttpContext()?.Request.Query["room"].ToString();
+        var roomName = RoomNameValidator.IsValidRoomName(requestedRoom)
+            ? requestedRoom!
+            : RoomNameValidator.DefaultRoomName;
+
+        ConnectionRooms[Context.ConnectionId] = roomName;
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
+
         var history = await db.Messages
+            .Where(m => m.RoomName == roomName)
             .OrderByDescending(m => m.TimestampUtc)
             .Take(HistorySize)
             .OrderBy(m => m.TimestampUtc)
             .Select(m => ChatMessageDto.FromEntity(m))
             .ToListAsync();
 
-        await Clients.Caller.SendAsync("MessageHistory", history);
+        await Clients.Caller.SendAsync("MessageHistory", roomName, history);
         await base.OnConnectedAsync();
     }
 
@@ -61,6 +78,11 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
     {
         var username = Context.User?.Identity?.Name;
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(content))
+        {
+            return;
+        }
+
+        if (!ConnectionRooms.TryGetValue(Context.ConnectionId, out var roomName))
         {
             return;
         }
@@ -75,8 +97,8 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
         if (ChatCommandParser.TryParseStockCommand(content, out var stockCode))
         {
             // Stock commands are never persisted as chat posts - only forwarded to the bot.
-            var request = new StockRequested(Guid.NewGuid(), stockCode, username, DateTime.UtcNow);
-            logger.LogInformation("Publishing stock request {StockCode} for {User}", stockCode, username);
+            var request = new StockRequested(Guid.NewGuid(), stockCode, roomName, username, DateTime.UtcNow);
+            logger.LogInformation("Publishing stock request {StockCode} for {User} in {Room}", stockCode, username, roomName);
             await publisher.PublishAsync(request);
             return;
         }
@@ -87,6 +109,7 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
             Id = Guid.NewGuid(),
             UserId = user.Id,
             Username = user.Username,
+            RoomName = roomName,
             Content = content,
             TimestampUtc = DateTime.UtcNow
         };
@@ -94,6 +117,6 @@ public sealed class ChatHub(ChatDbContext db, IStockRequestPublisher publisher, 
         db.Messages.Add(message);
         await db.SaveChangesAsync();
 
-        await Clients.All.SendAsync("ReceiveMessage", ChatMessageDto.FromEntity(message));
+        await Clients.Group(roomName).SendAsync("ReceiveMessage", ChatMessageDto.FromEntity(message));
     }
 }

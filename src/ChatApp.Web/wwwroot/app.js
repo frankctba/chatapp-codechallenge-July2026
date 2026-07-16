@@ -1,5 +1,6 @@
 let connection = null;
 let currentUsername = null;
+let currentRoom = null;
 let soundEnabled = localStorage.getItem('chatapp.soundEnabled') !== 'false';
 let audioContext = null;
 
@@ -19,10 +20,12 @@ function ensureAudioContext() {
 
 // ---------- Auth ----------
 
-// Mirrors ChatApp.Web/Validation/CredentialValidator.cs. This is purely for instant
-// feedback - the server re-checks everything and is the actual source of truth.
+// Mirrors ChatApp.Web/Validation/CredentialValidator.cs and RoomNameValidator.cs.
+// This is purely for instant feedback - the server re-checks everything and is the
+// actual source of truth.
 const USERNAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9._-]{2,19}$/;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+const ROOM_PATTERN = /^[a-zA-Z0-9._-]{1,30}$/;
 
 function validateCredentialsLocally(username, password) {
   if (!USERNAME_PATTERN.test(username)) {
@@ -63,8 +66,13 @@ async function login() {
 
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
+  const room = document.getElementById('room').value.trim() || 'general';
   if (!username || !password) {
     showLoginError('Enter a username and password.');
+    return;
+  }
+  if (!ROOM_PATTERN.test(room)) {
+    showLoginError('Room: 1-30 characters (letters, numbers, ".", "_", "-").');
     return;
   }
 
@@ -79,6 +87,7 @@ async function login() {
   }
 
   currentUsername = username;
+  currentRoom = room;
   document.getElementById('login').style.display = 'none';
   document.getElementById('chat').style.display = 'flex';
   document.getElementById('whoami').textContent = username;
@@ -101,11 +110,12 @@ function showLoginError(text) {
 
 async function connectToHub() {
   connection = new signalR.HubConnectionBuilder()
-    .withUrl('/hubs/chat')
+    .withUrl('/hubs/chat?room=' + encodeURIComponent(currentRoom))
     .withAutomaticReconnect()
     .build();
 
-  connection.on('MessageHistory', (messages) => {
+  connection.on('MessageHistory', (roomName, messages) => {
+    document.getElementById('roomName').textContent = roomName;
     const list = document.getElementById('messages');
     list.innerHTML = '';
     if (messages.length === 0) {
@@ -223,6 +233,40 @@ function colorForUsername(username) {
   }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 45%, 45%)`;
+}
+
+// ---------- Room switching ----------
+
+function openRoomSwitcher() {
+  const input = document.getElementById('switchRoomInput');
+  input.value = currentRoom;
+  document.getElementById('switchRoomError').textContent = '';
+  document.getElementById('roomSwitcher').hidden = false;
+  input.focus();
+  input.select();
+}
+
+function closeRoomSwitcher() {
+  document.getElementById('roomSwitcher').hidden = true;
+}
+
+async function switchRoom() {
+  const input = document.getElementById('switchRoomInput');
+  const newRoom = input.value.trim();
+  if (!ROOM_PATTERN.test(newRoom)) {
+    document.getElementById('switchRoomError').textContent = 'Room: 1-30 characters (letters, numbers, ".", "_", "-").';
+    return;
+  }
+
+  closeRoomSwitcher();
+  if (newRoom === currentRoom) return;
+
+  if (connection) {
+    await connection.stop();
+  }
+  currentRoom = newRoom;
+  document.getElementById('messages').innerHTML = '';
+  await connectToHub();
 }
 
 // ---------- Sending ----------

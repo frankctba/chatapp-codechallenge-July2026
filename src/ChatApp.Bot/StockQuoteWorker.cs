@@ -80,13 +80,13 @@ public sealed class StockQuoteWorker(
             var price = YahooQuoteParser.ParseClosePrice(json);
 
             response = price is null
-                ? new StockQuoteReady(request.RequestId, request.StockCode, false, null, "unknown stock code", DateTime.UtcNow)
-                : new StockQuoteReady(request.RequestId, request.StockCode, true, price, null, DateTime.UtcNow);
+                ? new StockQuoteReady(request.RequestId, request.StockCode, request.RoomName, false, null, "unknown stock code", DateTime.UtcNow)
+                : new StockQuoteReady(request.RequestId, request.StockCode, request.RoomName, true, price, null, DateTime.UtcNow);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to fetch quote for {StockCode}", request.StockCode);
-            response = new StockQuoteReady(request.RequestId, request.StockCode, false, null, "temporarily unavailable", DateTime.UtcNow);
+            response = new StockQuoteReady(request.RequestId, request.StockCode, request.RoomName, false, null, "temporarily unavailable", DateTime.UtcNow);
         }
 
         var body = JsonSerializer.SerializeToUtf8Bytes(response);

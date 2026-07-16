@@ -66,6 +66,7 @@ public sealed class StockResponseListener(
             Id = Guid.NewGuid(),
             UserId = User.StockBotId,
             Username = User.StockBotUsername,
+            RoomName = response.RoomName,
             Content = text,
             TimestampUtc = DateTime.UtcNow
         };
@@ -73,6 +74,6 @@ public sealed class StockResponseListener(
         db.Messages.Add(message);
         await db.SaveChangesAsync(cancellationToken);
 
-        await hubContext.Clients.All.SendAsync("ReceiveMessage", ChatMessageDto.FromEntity(message), cancellationToken);
+        await hubContext.Clients.Group(response.RoomName).SendAsync("ReceiveMessage", ChatMessageDto.FromEntity(message), cancellationToken);
     }
 }

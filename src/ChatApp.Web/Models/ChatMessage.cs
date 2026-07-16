@@ -8,6 +8,7 @@ public class ChatMessage
     // Denormalized on write so history reads never need a join, and so a display
     // name still makes sense even if a username were ever changed later.
     public required string Username { get; set; }
+    public required string RoomName { get; set; }
     public required string Content { get; set; }
     public DateTime TimestampUtc { get; set; }
 }

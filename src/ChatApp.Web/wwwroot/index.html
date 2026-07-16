@@ -18,6 +18,11 @@
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); login(); }" />
     <p class="field-hint" id="passwordHint">At least 8 characters, including a letter and a number.</p>
+
+    <label for="room">Room</label>
+    <input id="room" placeholder="general" value="general" onkeydown="if(event.key==='Enter'){ event.preventDefault(); login(); }" />
+    <p class="field-hint" id="roomHint">1-30 characters: letters, numbers, dots, underscores, or hyphens. Join an existing room or start a new one.</p>
+
     <p class="field-hint" style="margin-top:-8px;">New here? Fill in both fields above, then tap <strong>Register</strong> - it also signs you in.</p>
 
     <div class="login-actions">
@@ -30,7 +35,7 @@
   <div id="chat">
     <div id="chat-header">
       <div>
-        <h1>General chatroom</h1>
+        <h1>Room: <span id="roomName">general</span></h1>
         <div class="status">
           <span id="statusDot" class="status-dot"></span>
           <span id="statusText">connecting…</span>
@@ -38,8 +43,19 @@
       </div>
       <div class="header-actions">
         <span id="whoami" style="font-size:13px;color:var(--text-secondary);"></span>
+        <button id="switchRoomBtn" class="icon-btn" type="button" title="Switch room" onclick="openRoomSwitcher()">🔀</button>
         <button id="soundToggle" class="icon-btn" type="button" aria-pressed="true" title="Mute notification sound" onclick="toggleSound()">🔔</button>
       </div>
+    </div>
+
+    <div id="roomSwitcher" class="room-switcher" hidden>
+      <label for="switchRoomInput">Switch to a different room</label>
+      <div class="room-switcher-row">
+        <input id="switchRoomInput" placeholder="general" onkeydown="if(event.key==='Enter'){ event.preventDefault(); switchRoom(); } if(event.key==='Escape'){ closeRoomSwitcher(); }" />
+        <button type="button" class="primary" onclick="switchRoom()">Join</button>
+        <button type="button" onclick="closeRoomSwitcher()">Cancel</button>
+      </div>
+      <p id="switchRoomError" role="alert"></p>
     </div>
 
     <div id="rateLimitBanner" class="banner" hidden></div>

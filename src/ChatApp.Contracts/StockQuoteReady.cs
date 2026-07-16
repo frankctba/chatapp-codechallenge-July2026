@@ -8,6 +8,7 @@ namespace ChatApp.Contracts;
 public sealed record StockQuoteReady(
     Guid RequestId,
     string StockCode,
+    string RoomName,
     bool Success,
     decimal? Price,
     string? ErrorMessage,

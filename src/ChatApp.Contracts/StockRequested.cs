@@ -7,5 +7,6 @@ namespace ChatApp.Contracts;
 public sealed record StockRequested(
     Guid RequestId,
     string StockCode,
+    string RoomName,
     string RequestedByUsername,
     DateTime RequestedAtUtc);
